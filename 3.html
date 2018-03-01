@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <style>
+      html,body,*{padding: 0;margin: 0;overflow: hidden;}
+      html, body {height: 100%}
+      /* canvas { width: 100%; height: 100% } */
+    </style>
+    <script src="../three.min.js"></script>
+    <script src="./OrbitControls.js"></script>
+    <script src="./OBJLoader.js"></script>
+    <script src="./MTLLoader.js"></script>
+    <script src="./stats.min.js"></script>
+</head>
+<body>
+    <div id="container"></div>
+</body>
+</html>
+<script>
+  var container = document.getElementById( 'container' )
+  stats = new Stats()
+  container.appendChild( stats.dom )
+  // 场景
+  let scene = new THREE.Scene()
+  // 物品
+  let geometry = new THREE.BoxGeometry(100, 100 ,100)
+  let material = new THREE.MeshLambertMaterial({color: 0xff0000})
+  // 网格（几何， 材料）
+  let mesh = new THREE.Mesh(geometry, material)
+  // scene.add(mesh)
+  var materials = []
+  for (var i = 1; i < 7; ++i) {
+    materials.push(new THREE.MeshBasicMaterial({
+      map: THREE.ImageUtils.loadTexture('./img/' + i + '.jpg',//图片的路径  
+      {}, function() {
+        renderer.render(scene, camera)
+      }),
+      overdraw: true  
+    }))
+  }
+  function createMesh(geom, imageFile) {
+    var texture = THREE.ImageUtils.loadTexture(imageFile)
+    var mat = new THREE.MeshPhongMaterial()
+    mat.map = texture  // 材质的Map属性用于添加纹理
+    var mesh = new THREE.Mesh(geom, mat)
+    return mesh
+  }
+  var sphere = createMesh(new THREE.SphereGeometry(50, 50, 50), './img/1.jpg');
+  scene.add(sphere)
+  var cube = new THREE.Mesh(new THREE.CubeGeometry(50, 50, 50),  new THREE.MeshFaceMaterial(materials))
+  // scene.add(cube)
+  var mtlLoader = new THREE.MTLLoader()
+  mtlLoader.setPath( './obj/girl/' )
+  mtlLoader.load( 'obj.mtl', function( materials ) {
+    materials.preload()
+    var objLoader = new THREE.OBJLoader()
+    objLoader.setMaterials( materials )
+    objLoader.setPath( './obj/girl/' )
+    objLoader.load( 'obj.obj', function ( object ) {
+      console.log(object)
+      object.scale.x = 0.2
+      object.scale.y = 0.2
+      object.scale.z = 0.2
+      // setInterval(() => {
+      //   object.position.y -=1
+      // }, 100)
+      scene.add( object )
+    } )
+  })
+  // scene.background = new THREE.CubeTextureLoader()
+  //   .setPath( './obj/pisa/' )
+  //   .load( [ 'px.png', 'nx.png', 'py.png', 'ny.png', 'pz.png', 'nz.png' ] )
+
+  // 灯光
+  // let light = new THREE.PointLight(0xffffff)
+  // light.position.set(300, 400, 200)
+  // scene.add(light)
+  scene.add(new THREE.AmbientLight(0xffffff, 1))
+  // 相机
+  let camera = new THREE.PerspectiveCamera(45, document.body.clientWidth/document.body.clientHeight, 0.1, 1000)
+  camera.position.set(document.body.clientWidth/2, document.body.clientHeight/2, 200)
+  camera.lookAt(scene.position)
+  // 渲染器
+  let renderer = new THREE.WebGLRenderer()
+  renderer.setSize(document.body.clientWidth  , document.body.clientHeight)
+  document.body.appendChild(renderer.domElement)
+  // 渲染（场景， 相机
+  let render = () => {
+    renderer.render(scene, camera)
+  }
+  render()
+  let controls = new THREE.OrbitControls(camera)
+  controls.addEventListener('change', render)
+  let animate = () => {
+    requestAnimationFrame(animate)
+    stats.update()
+    render()
+  }
+  animate()
+  var helper = new THREE.GridHelper( 500, 50 )
+  scene.add( helper )
+</script>

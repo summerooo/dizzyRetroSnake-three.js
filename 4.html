@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>我会让你眼晕，哈哈哈</title>
+    <style>
+      html,body,*{padding: 0;margin: 0;overflow: hidden;}
+      html, body {height: 100%}
+      /* canvas { width: 100%; height: 100% } */
+    </style>
+    <script src="./three.min.js"></script>
+    <script src="./OrbitControls.js"></script>
+    <script src="./stats.min.js"></script>
+</head>
+<body>
+    <div id="container"></div>
+</body>
+</html>
+<script>
+  // fps 监测
+  var container = document.getElementById( 'container' )
+  stats = new Stats()
+  container.appendChild( stats.dom )
+  // 场景 环境光
+  let scene = new THREE.Scene()
+  scene.add(new THREE.AmbientLight(0xffffff, 1))
+  // 相机
+  let camera = new THREE.PerspectiveCamera(45, document.body.clientWidth/document.body.clientHeight, 0.1, 1000)
+  camera.position.set(0, 130, 30)
+  // camera.position.set(0, 0, 5)
+  camera.lookAt(scene.position)
+  // 渲染器
+  let renderer = new THREE.WebGLRenderer()
+  renderer.setSize(document.body.clientWidth  , document.body.clientHeight)
+  document.body.appendChild(renderer.domElement)
+  // 渲染（场景， 相机
+  let render = () => {
+    renderer.render(scene, camera)
+  }
+  render()
+  // 相机控制
+  let controls = new THREE.OrbitControls(camera)
+  controls.addEventListener('change', render)
+  let animate = () => {
+    requestAnimationFrame(animate)
+    stats.update()
+    render()
+  }
+  animate()
+  // 地图渲染
+  var map = new THREE.GridHelper( 100, 10 )
+  scene.add( map )
+  // 方格6个面随机图片
+  let sixImg = () => {
+    let materials = []
+    for (var i = 1; i < 7; i++) {
+      materials.push(new THREE.MeshBasicMaterial({
+        map: THREE.ImageUtils.loadTexture('./img/' +  Math.ceil(Math.random() * i) + '.jpg',//图片的路径  
+        {}, function() {
+          renderer.render(scene, camera)
+        }),
+        overdraw: true  
+      }))
+    }
+    return materials
+  }
+  // 方格位置
+  let pos = (what, x, y, z) => {
+    // console.log(what, x, y, z)
+    what.position.x = x
+    what.position.y = y
+    what.position.z = z
+  }
+  class food {
+    constructor () {
+      this.fondSize = [10, 10, 10]
+      this.foodxyz = [null, 5, 5, 5]
+    }
+    show (oo) {
+      this.foodxyz = [
+        null,
+        parseInt(Math.random() * 10) * 10 - 45,
+        5,
+        parseInt(Math.random() * 10) * 10 - 45
+      ]
+      this.judge(oo)
+    }
+    // 判断食物是否刷在蛇里
+    judge (oo) {
+      oo.find(async (v, i, arr) => {
+        if (arr[i][1] === this.foodxyz[1] & arr[i][3] === this.foodxyz[3]) {
+          // 有的话重新调用
+          this.show(oo)
+        } else {
+          // 没有的话 则创建
+          this.foodxyz[0] = await new THREE.Mesh(new THREE.BoxGeometry(...this.fondSize),  new THREE.MeshFaceMaterial(sixImg()))
+          pos(...this.foodxyz)
+          scene.add(this.foodxyz[0])
+          return
+        }
+      })
+    }
+  }
+  class snake {
+    constructor () {
+      this.dir = 'left'
+      this.snakSize = [10, 10, 10]
+      this.snakexyz = [
+        [
+          new THREE.Mesh(new THREE.BoxGeometry(...this.snakSize),  new THREE.MeshLambertMaterial({color: 0x0000FF})),
+          5, 5, 5
+        ],
+        [
+          new THREE.Mesh(new THREE.BoxGeometry(...this.snakSize),  new THREE.MeshFaceMaterial(sixImg())),
+          15, 5, 5
+        ],
+        [
+          new THREE.Mesh(new THREE.BoxGeometry(...this.snakSize),  new THREE.MeshFaceMaterial(sixImg())),
+          25, 5, 5
+        ]
+      ]
+    }
+    show () {
+      for (let i in this.snakexyz) {
+        pos(...this.snakexyz[i])
+        scene.add(this.snakexyz[i][0])
+      }
+    }
+    move () {
+      for (let i = this.snakexyz.length - 1; i > 0; i--) {
+        this.snakexyz[i][1] = this.snakexyz[i - 1][1]
+        this.snakexyz[i][3] = this.snakexyz[i - 1][3]
+      }
+      switch (this.dir) {
+        case 'up':
+          this.snakexyz[0][3] -= 10
+        break
+        case 'left':
+          this.snakexyz[0][1] -= 10
+        break
+        case 'down':
+          this.snakexyz[0][3] += 10
+        break
+        case 'right':
+          this.snakexyz[0][1] += 10
+        break
+      }
+      this.throughWall()
+      this.eat()
+      this.show()
+    }
+    setDir (code) {
+      this.dir = this.dir.toString()
+      switch (code) {
+        case 87:
+          if (this.dir === 'down') {
+            break
+          } else {
+            this.dir = 'up'
+          }
+          break
+        case 65:
+          if (this.dir === 'right') {
+            break
+          } else {
+            this.dir = 'left'
+          }
+          break
+        case 83:
+            if (this.dir === 'up') {
+              break
+            } else {
+              this.dir = 'down'
+            }
+          break
+        case 68:
+            if (this.dir === 'left') {
+              break
+            } else {
+              this.dir = 'right'
+            }
+          break
+      }
+    }
+    eat () {
+      if (this.snakexyz[0][1] === f.foodxyz[1] & this.snakexyz[0][3] === f.foodxyz[3]) {
+        this.snakexyz.push(f.foodxyz)
+        f.show(s.snakexyz)
+      }
+    }
+    throughWall () {
+      if (this.snakexyz[0][3] < -45) {
+        this.snakexyz[0][3] = 45
+      }
+      if (this.snakexyz[0][3] > 45) {
+        this.snakexyz[0][3] = -45
+      }
+      if (this.snakexyz[0][1] < -45) {
+        this.snakexyz[0][1] = 45
+      }
+      if (this.snakexyz[0][1] > 45) {
+        this.snakexyz[0][1] = -45
+      }
+    }
+  }
+  let f = new food()
+  let s = new snake()
+  s.show()
+  f.show(s.snakexyz)
+  // s.move()
+  setInterval( 's.move()' ,200)
+  document.onkeydown = (e) => {
+    s.setDir(e.which)
+    render()
+  }
+</script>
